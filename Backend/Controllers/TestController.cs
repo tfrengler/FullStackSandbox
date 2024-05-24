@@ -1,10 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using FullStackSandbox.Backend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using System;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace FullStackSandbox.Backend.Controllers
 {
@@ -12,12 +9,9 @@ namespace FullStackSandbox.Backend.Controllers
     [ApiController]
     public class TestController : Controller
     {
-        private readonly byte[] Salt;
-
-        public TestController(IOptions<Models.SecurityConfig> config)
+        public TestController()
         {
-            string SaltAsString = config.Value.PasswordSalt;
-            Salt = Encoding.UTF8.GetBytes(SaltAsString);
+
         }
 
         [Route("generateHashedPassword")]
@@ -33,9 +27,7 @@ namespace FullStackSandbox.Backend.Controllers
                 return Problem(detail: "Query param 'password' is missing or empty", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            byte[] InputAsBytes = Encoding.UTF8.GetBytes(password);
-            var HashResultAsBytes = new Rfc2898DeriveBytes(InputAsBytes, Salt, 10000, HashAlgorithmName.SHA256);
-            return Convert.ToBase64String(HashResultAsBytes.GetBytes(24));
+            return HashedPassword.Create(password).AsBase64String();
         }
 
         [Route("testAuth")]

@@ -25,7 +25,6 @@ namespace FullStackSandbox.Models
         public uint JWTClockSkewInSeconds { get; init; }
         public uint JWTAccessTokenExpiryInMinutes { get; init; }
         public uint JWTRefreshTokenExpiryInMinutes { get; init; }
-        public string PasswordSalt { get; init; } = string.Empty;
         public string[] CORSOrigins { get; init; } = Array.Empty<string>();
         public string[] CORSAllowedMethods { get; init; } = Array.Empty<string>();
 
@@ -35,7 +34,6 @@ namespace FullStackSandbox.Models
             {
                 $"-| JWTSecretSigningKey            : {JWTSecretSigningKey}",
                 $"-| JWTClockSkewInSeconds          : {JWTClockSkewInSeconds}",
-                $"-| PasswordSalt                   : {PasswordSalt}",
                 $"-| JWTAccessTokenExpiryInMinutes  : {JWTAccessTokenExpiryInMinutes}",
                 $"-| JWTRefreshTokenExpiryInMinutes : {JWTRefreshTokenExpiryInMinutes}",
                 $"-| CORSOrigins                    : {string.Join(';', CORSOrigins)}",

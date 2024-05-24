@@ -15,6 +15,9 @@ using System.Threading.Tasks;
 
 namespace FullStackSandbox.Services
 {
+    /// <summary>
+    /// Service for managing JWT- and refresh tokens, exposing methods to generate and validate them.
+    /// </summary>
     public class JwtService
     {
         private readonly string Key;
@@ -22,6 +25,7 @@ namespace FullStackSandbox.Services
         private readonly TimeSpan RefreshTokenExpireTime;
         private readonly TimeSpan AccessTokenExpireTime;
         private readonly ILogger<JwtService> Logger;
+        private readonly RandomNumberGenerator RNGSecure;
 
         public JwtService(IOptions<Models.SecurityConfig> configuration, ILogger<JwtService> logger)
         {
@@ -30,6 +34,7 @@ namespace FullStackSandbox.Services
             RefreshTokenExpireTime = TimeSpan.FromMinutes(configuration.Value.JWTRefreshTokenExpiryInMinutes);
             AccessTokenExpireTime = TimeSpan.FromMinutes(configuration.Value.JWTAccessTokenExpiryInMinutes);
             Logger = logger;
+            RNGSecure = RandomNumberGenerator.Create();
         }
 
         public Models.JwtToken GenerateTokens(string username, IEnumerable<string> roles)
@@ -70,8 +75,7 @@ namespace FullStackSandbox.Services
 
         public string GenerateRefreshToken()
         {
-            var TokenAsBytes = new byte[128 / 8];
-            var RNGSecure = RandomNumberGenerator.Create();
+            var TokenAsBytes = new byte[256 / 8];
             RNGSecure.GetBytes(TokenAsBytes);
             return Convert.ToBase64String(TokenAsBytes);
         }

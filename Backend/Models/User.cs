@@ -1,3 +1,4 @@
+using FullStackSandbox.Backend.Models;
 using System;
 using System.Collections.Generic;
 
@@ -7,10 +8,10 @@ namespace FullStackSandbox.Models
     {
         public User() { }
 
-        public User(string userName, string password, IEnumerable<string> roles)
+        public User(string userName, HashedPassword password, IEnumerable<string> roles)
         {
-            ArgumentNullException.ThrowIfNull(userName);
-            ArgumentException.ThrowIfNullOrWhiteSpace(password);
+            ArgumentException.ThrowIfNullOrWhiteSpace(userName);
+            ArgumentNullException.ThrowIfNull(password);
             ArgumentNullException.ThrowIfNull(roles);
 
             Username = userName;
@@ -18,11 +19,11 @@ namespace FullStackSandbox.Models
             Roles = roles;
         }
 
-        public User(string userName, string displayName, string password, IEnumerable<string> roles)
+        public User(string userName, string displayName, HashedPassword password, IEnumerable<string> roles)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(userName);
             ArgumentNullException.ThrowIfNull(displayName);
-            ArgumentException.ThrowIfNullOrWhiteSpace(password);
+            ArgumentNullException.ThrowIfNull(password);
             ArgumentNullException.ThrowIfNull(roles);
 
             Username = userName;
@@ -33,7 +34,7 @@ namespace FullStackSandbox.Models
 
         public string Username { get; init; } = string.Empty;
         public string DisplayName { get; init; } = string.Empty;
-        public string Password { get; init; } = string.Empty;
+        public HashedPassword Password { get; init; }
         public IEnumerable<string> Roles { get; init; } = Array.Empty<string>();
     }
 }

@@ -1,36 +1,38 @@
+using FullStackSandbox.Backend.Models;
 using FullStackSandbox.Models;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace FullStackSandbox.Services
 {
     public sealed class UserService
     {
-        private readonly byte[] Salt;
         private readonly ConcurrentDictionary<string, Models.UserRefreshToken> Sessions;
         private readonly Dictionary<string, Models.User> Users;
 
-        public UserService(IOptions<Models.SecurityConfig> config)
+        public UserService()
         {
-            string SaltAsString = config.Value.PasswordSalt;
-            Salt = Encoding.UTF8.GetBytes(SaltAsString);
-
             Sessions = new();
 
             Users = new()
             {
-                { "tfrengler", new Models.User("tfrengler", "jhIwsSdkWHiWW7LF9E5x0RmvM/k3QMzO", new string[] { "Normal", "Admin" }) }
+                { 
+                    "tfrengler",
+                    new Models.User(
+                        "tfrengler",
+                        HashedPassword.Create("tf499985", Encoding.ASCII.GetBytes("1234567890123456")),
+                        new string[] { "Normal", "Admin" }
+                    )
+                }
             };
         }
 
         public void AddUserRefreshToken(string username, Models.UserRefreshToken refreshToken)
         {
-            if (string.IsNullOrWhiteSpace(username)) throw new ArgumentNullException(nameof(username));
+            ArgumentException.ThrowIfNullOrWhiteSpace(username);
             Sessions[username] = refreshToken;
         }
 
@@ -59,25 +61,32 @@ namespace FullStackSandbox.Services
             return false;
         }
 
-        public bool IsValidUser(Models.User user, [NotNullWhen(true)]out User? UserData)
+        public bool IsValidUser(string username, string plainPassword, [NotNullWhen(true)]out User? UserData)
         {
-            if (!Users.TryGetValue(user.Username, out UserData)) return false;
+            if (!Users.TryGetValue(username, out UserData))
+            {
+                return false;
+            }
 
-            var HashedInputPassword = ComputeHash(user.Password);
+            var ExpectedPassword = UserData.Password;
+            var UserGivenPassword = HashedPassword.Create(plainPassword, ExpectedPassword.SaltBytes);
 
-            return CryptographicOperations.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(HashedInputPassword),
-                Encoding.UTF8.GetBytes(UserData.Password)
-            );
+            return ExpectedPassword.SecureEqualTo(UserGivenPassword);
         }
 
-        private string ComputeHash(string rawData)
-        {
-            if (string.IsNullOrWhiteSpace(rawData)) return string.Empty;
-
-            byte[] InputAsBytes = Encoding.UTF8.GetBytes(rawData);
-            var HashResultAsBytes = new Rfc2898DeriveBytes(InputAsBytes, Salt, 10000, HashAlgorithmName.SHA256);
-            return Convert.ToBase64String(HashResultAsBytes.GetBytes(24));
-        }
+        /* NEW:
+         * 1: Generate random bytes as salt (16 bytes)
+         * 2: Generate hash bytes from password string with the salt (20 bytes)
+         * 3: Store in separate (a) columns or single (b) column
+         *      a: convert both byte arrays to base64 string
+         *      b: combine both hash byte arrays to one, convert to base64
+         *      
+         * VERIFY:
+         * 1: Depending on 3 above:
+         *      a: retrieve both values from db, decode from base64 to byte arrays
+         *      b: retrieve the value, decode from base64 to byte array, separate the salt and password part from the bytes
+         * 2: Do 2 on the user supplied password with the salt from the db
+         * 3: Compare both user supplied hash bytes with password hash bytes from db using FixedTimeEquals
+        */
     }
 }

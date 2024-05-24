@@ -10,6 +10,7 @@ using System.Diagnostics;
 using FullStackSandbox.Models;
 using FullStackSandbox.Models.RequestObjects;
 using FullStackSandbox.Models.ResponseObjects;
+using FullStackSandbox.Backend.Models;
 
 namespace FullStackSandbox.Controllers
 {
@@ -48,16 +49,15 @@ namespace FullStackSandbox.Controllers
                 return Problem(detail: "Username or password is empty or missing", statusCode: StatusCodes.Status400BadRequest);
             }
 
-            if (!Users.IsValidUser(new User(requestObject.Username, requestObject.Password, Array.Empty<string>()), out User? ValidUser))
+            if (!Users.IsValidUser(requestObject.Username, requestObject.Password, out User? ValidUser))
             {
-                Logger.LogWarning($"Authentication request failed due to wrong credentials: {requestObject.Username}");
                 return Unauthorized();
             }
 
             JwtToken Tokens = JWTService.GenerateTokens(ValidUser.Username, ValidUser.Roles);
 
             Users.AddUserRefreshToken(ValidUser.Username, new UserRefreshToken(Tokens.Refresh, Tokens.Expires));
-            Logger.LogInformation($"Authentication succeeded for user {ValidUser.Username} (expires: {Tokens.Expires})");
+            Logger.LogInformation("User authenticated: '{Username}' (expires: {Expiry})", ValidUser.Username, Tokens.Expires.ToLocalTime());
 
             return Ok(new TokenResponseObject()
             {
@@ -75,7 +75,7 @@ namespace FullStackSandbox.Controllers
         /// <response code="403">If the refresh token is unknown/invalid, does not exist, or do not belong together with the access token.</response>
         /// <response code="400">If the request is malformed and/or failed validation criteria.</response>
         [Route("refresh")]
-        [HttpPost]
+        [HttpPatch]
         [AllowAnonymous]
         [Produces("application/json")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -109,7 +109,7 @@ namespace FullStackSandbox.Controllers
             Users.RevokeUserRefreshToken(Username, RefreshToken.RefreshToken);
             Users.AddUserRefreshToken(Username, new UserRefreshToken(NewTokens.Refresh, NewTokens.Expires));
 
-            Logger.LogInformation($"Refresh succeeded for user {Username} (refresh: {NewTokens.Refresh} | expiry: {NewTokens.Expires})");
+            Logger.LogInformation("Tokens refreshed for user '{Username}' (expires: {Expiry})", Username, NewTokens.Expires.ToLocalTime());
 
             return Ok(new TokenResponseObject
             {
@@ -127,7 +127,7 @@ namespace FullStackSandbox.Controllers
         /// <response code="401">If the access token is invalid or unknown.</response>
         /// <response code="403">If the refresh token is unknown/invalid, does not exist, or does not belong together with the access token.</response>
         [Route("revoke")]
-        [HttpPost]
+        [HttpDelete]
         [AllowAnonymous]
         [Produces("application/json")]
         [ProducesResponseType(typeof(void), StatusCodes.Status401Unauthorized)]
@@ -148,7 +148,10 @@ namespace FullStackSandbox.Controllers
             string Username = Principal.Identity?.Name ?? string.Empty;
 
             if (Users.RevokeUserRefreshToken(Username, requestObject.RefreshToken))
+            {
+                Logger.LogInformation("Tokens revoked for user '{Username}'", Username);
                 return NoContent();
+            }
 
             return Forbid();
         }
